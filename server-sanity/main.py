@@ -12,7 +12,6 @@ import requests
 class Consumer(threading.Thread):
     CLOCKS_PATH = "https://ticktok-io-dev.herokuapp.com/api/v1/clocks?access_token=%s" % os.environ["TICKTOK_TOKEN"]
 
-
     channel = None
 
     def __init__(self, name, schedule, on_tick_callback):
@@ -91,5 +90,5 @@ class TicktokTester(object):
 
 
 if __name__ == '__main__':
-    TicktokTester().test(1, 1)
+    TicktokTester().test(2, 3)
     print("done")
