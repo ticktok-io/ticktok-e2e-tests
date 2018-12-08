@@ -1,5 +1,4 @@
 import datetime
-import os
 import random
 import sys
 import threading
@@ -10,9 +9,11 @@ import requests
 
 
 class Consumer(threading.Thread):
-    CLOCKS_PATH = "https://ticktok-io-dev.herokuapp.com/api/v1/clocks?access_token=%s" % os.environ["TICKTOK_TOKEN"]
+    # CLOCKS_PATH = "https://ticktok-io-dev.herokuapp.com/api/v1/clocks?access_token=%s" % os.environ["TICKTOK_TOKEN"]
+    CLOCKS_PATH = "http://localhost:8080/api/v1/clocks?access_token=1234"
 
     channel = None
+    consumer_tag = None
 
     def __init__(self, name, schedule, on_tick_callback):
         threading.Thread.__init__(self)
@@ -28,12 +29,13 @@ class Consumer(threading.Thread):
         response = requests.post(self.CLOCKS_PATH, json={'name': self.name, 'schedule': self.schedule})
         assert response.status_code == 201, response.text
         print("Created a clock [name: %s, schedule: %s]" % (self.name, self.schedule))
+        sys.stdout.flush()
         return response.json()
 
     def listen_on_ticks(self, clock_channel):
         connection = pika.BlockingConnection(pika.connection.URLParameters(clock_channel["uri"]))
         self.channel = connection.channel()
-        self.channel.basic_consume(self.tick, queue=clock_channel['queue'])
+        self.consumer_tag = self.channel.basic_consume(self.tick, queue=clock_channel['queue'])
         self.channel.start_consuming()
 
     def tick(self, ch, method, properties, body):
@@ -41,7 +43,9 @@ class Consumer(threading.Thread):
 
     def stop(self):
         if self.channel is not None:
-            self.channel.stop_consuming()
+            print("Stopping %s" % self.consumer_tag)
+            sys.stdout.flush()
+            self.channel.stop_consuming(self.consumer_tag)
 
 
 class TicktokTester(object):
@@ -50,6 +54,7 @@ class TicktokTester(object):
 
     consumers = {}
     counters = {}
+    report = ""
 
     def test(self, num_of_clocks, consumers_per_clock):
         for clockIdx in range(0, num_of_clocks):
@@ -57,6 +62,9 @@ class TicktokTester(object):
             for consumerIdx in range(0, consumers_per_clock):
                 self.invoke_consumer_for("test-consumer-%s" % clockIdx, schedule)
         self.wait_for_consumer_to_finish()
+        with open(self.FILE_NAME, "a") as file:
+            file.write(self.report)
+        print("done")
 
     def draw_schedule(self):
         secs = random.randint(1, 5)
@@ -72,16 +80,14 @@ class TicktokTester(object):
 
     def on_tick_callback(self, name, schedule):
         self.counters[name] += 1
-        with open(self.FILE_NAME, "a") as file:
-            file.write("%s, %s, %s, %s\n" % (str(datetime.datetime.now()), name, schedule, self.counters[name]))
-        sys.stdout.flush()
+        self.report = "%s%s" % (self.report, "%s, %s, %s, %s\n" % (str(datetime.datetime.now()), name, schedule, self.counters[name]))
         self.stop_all_consumers_for(name)
 
     def stop_all_consumers_for(self, name):
         if self.counters[name] >= self.NUM_OF_TICKS:
             print("Stopping consumers for: %s" % name)
-            for c in self.consumers[name]:
-                c.stop()
+            while len(self.consumers[name]) > 0:
+                self.consumers[name].pop().stop()
 
     def wait_for_consumer_to_finish(self):
         for key, value in self.consumers.items():
@@ -90,5 +96,4 @@ class TicktokTester(object):
 
 
 if __name__ == '__main__':
-    TicktokTester().test(2, 3)
-    print("done")
+    TicktokTester().test(60, 10)
