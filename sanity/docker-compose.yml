@@ -1,0 +1,30 @@
+version: '3'
+
+services:
+  ticktok:
+    image: ticktok/ticktok:0.2.6
+    ports:
+      - 9643:9643
+    environment:
+      - RABBIT_URI=amqp://rabbit
+      - RABBIT_CONSUMERURI=amqp://localhost
+      - MONGO_URI=mongodb://mongo/sanity
+    depends_on:
+      - rabbit
+      - mongo
+
+  rabbit:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - 8888:15672
+      - 5672:5672
+    hostname: ticktok-rabbit
+
+  mongo:
+    image: mongo:3.6
+    command: --storageEngine ephemeralForTest
+    ports:
+      - 27017:27017
+
+
+

@@ -1,0 +1,12 @@
+apply plugin: 'java'
+apply plugin: 'application'
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    compile 'io.ticktok:ticktok-java-client:0.4.5'
+}
+
+mainClassName = 'io.ticktok.sanity.SanityCheck'
