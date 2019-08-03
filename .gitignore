@@ -3,3 +3,4 @@
 .idea
 gradle
 ticktok-e2e-tests.iml
+node_modules

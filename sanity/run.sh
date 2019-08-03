@@ -7,7 +7,7 @@ if [[ $# -eq 0 ]] ; then
 fi
 
 docker-compose up -d
-sleep 10
+sleep 20
 open http://localhost:9643?api_key=ticktok-zY3wpR
 cd $1
 sh ./start.sh
